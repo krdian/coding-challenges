@@ -1,0 +1,81 @@
+---
+- name: Distribution
+  ansible.builtin.debug:
+    msg: "{{ ansible_distribution }}"
+
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Update all packages to their latest version
+  ansible.builtin.apt:
+    name: "*"
+    state: latest
+  when: ansible_facts['os_family'] == 'Debian'
+  register: apt_update_result
+
+- name: Display apt update result
+  ansible.builtin.debug:
+    msg: >-
+      Apt update result: {{ apt_update_result.changed }}
+      {% if apt_update_result.changed and apt_update_result.stdout_lines is defined %}
+      Updated packages:
+      {{ apt_update_result.stdout_lines | join('\n') }}
+      {% else %}
+      No packages were updated.
+      {% endif %}
+
+- name: Remove dependencies that are no longer required
+  ansible.builtin.apt:
+    autoremove: true
+    autoclean: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Update all packages to their latest version
+  ansible.builtin.yum:
+    name: "*"
+    state: latest
+  when: ansible_facts['os_family'] == 'RedHat'
+  register: yum_update_result
+- name: Display yum update result
+  ansible.builtin.debug:
+    msg: >-
+      Yum update result: {{ yum_update_result.changed }}
+      {% if yum_update_result.changed and yum_update_result.stdout_lines is defined %}
+      Updated packages:
+      {{ yum_update_result.stdout_lines | join('\n') }}
+      {% else %}
+      No packages were updated.
+      {% endif %}
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install apache server for Debian servers
+  ansible.builtin.apt:
+    name: apache2
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Copy index.html to web server
+  ansible.builtin.template:
+    src: hello_world.j2
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure apache is started and enabled on boot for Debian servers
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install MariaDB server for RedHat servers
+  ansible.builtin.yum:
+    name: mariadb-server
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+
+
